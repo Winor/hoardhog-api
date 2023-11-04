@@ -2,6 +2,8 @@ import axios from "axios";
 import urlParser from "./urlParser";
 import { it } from "node:test";
 
+const url = urlParser("{{app-protocol}}://{{app-url}}/{{api-path}}/items");
+
 export interface NewItem {
     id: number,
     name: string,
@@ -18,7 +20,6 @@ class Item {
     category_id: number;
     description: string;
     location_id: number;
-    private url = urlParser("{{app-protocol}}://{{app-url}}/{{api-path}}/items");
 
     constructor(item: Partial<Item>) {
         this.id = item.id;
@@ -29,22 +30,31 @@ class Item {
         this.location_id = item.location_id;
     }
 
-    async all() : Promise<Item[]> {
+    async all() : Promise<Map<number,Item>> {
         try {
-          const response = await axios.get<Item[]>(this.url);
-          const list: Item[] = []
+          const response = await axios.get<Item[]>(url);
+          const list: Map<number,Item> = new Map();
           response.data.forEach(itm => {
-            list.push(new Item(itm))
+            list.set(itm.id ,new Item(itm))
           });
           return list;
         } catch (error) {
             return error;
         }
       }
+
+    async get(id: number) : Promise<Item> {
+      try {
+        const response = await axios.get<Item>(`${url}/${id}`);
+        return new Item(response.data)
+      } catch (error) {
+        return error;
+      }
+    }
     
     async new(item: Partial<Omit<Item, "id">>) : Promise<Item> {
       try {
-        const response = await axios.post<Item>(this.url, item);
+        const response = await axios.post<Item>(url, item);
         return new Item(response.data);
       } catch (error) {
           return error;
@@ -54,7 +64,7 @@ class Item {
     async edit(item: Partial<Item>) : Promise<Item> {
       try {
         const updated = Object.assign(this, item)
-        const response = await axios.put<Item>(this.url, updated);
+        const response = await axios.put<Item>(url, updated);
         return new Item(response.data);
       } catch (error) {
           return error;
@@ -63,11 +73,15 @@ class Item {
 
     async update() : Promise<Item> {
       try {
-        const response = await axios.put<Item>(this.url, this);
+        const response = await axios.put<Item>(url, this);
         return new Item(response.data);
       } catch (error) {
           return error;
       }
+    }
+
+    instance(item: Partial<Item>) {
+      return new Item(item)
     }
 
 
